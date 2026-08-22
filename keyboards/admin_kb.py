@@ -86,6 +86,12 @@ def admin_main_kb() -> InlineKeyboardMarkup:
             style="primary",
             icon_custom_emoji_id=EMOJI_BULLET,
         ),
+        InlineKeyboardButton(
+            text="🎫 Support Tickets",
+            callback_data="adm_tickets_menu",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_STAR,
+        ),
     )
     builder.row(
         InlineKeyboardButton(
@@ -398,5 +404,118 @@ def admin_settings_kb(is_paytm_valid: bool = False) -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(text="🔙 Admin Dashboard", callback_data="admin_dashboard", style="primary", icon_custom_emoji_id=EMOJI_BACK)
+    )
+    return builder.as_markup()
+
+
+def admin_tickets_list_kb(tickets: List[Dict[str, Any]], filter_status: str = "open") -> InlineKeyboardMarkup:
+    """List of support tickets for admin"""
+    builder = InlineKeyboardBuilder()
+
+    # Filter tabs
+    builder.row(
+        InlineKeyboardButton(
+            text=f"{'🟢' if filter_status == 'open' else '⚪'} Active / Open",
+            callback_data="adm_tickets_open",
+            style="success" if filter_status == "open" else "primary",
+        ),
+        InlineKeyboardButton(
+            text=f"{'🔴' if filter_status == 'closed' else '⚪'} Closed",
+            callback_data="adm_tickets_closed",
+            style="danger" if filter_status == "closed" else "primary",
+        ),
+    )
+
+    for t in tickets:
+        status = t.get("status", "open")
+        if status == "answered":
+            emoji_badge = "🟢"
+            style_type = "success"
+            icon_id = EMOJI_SUCCESS
+        elif status == "open":
+            emoji_badge = "🟡"
+            style_type = "primary"
+            icon_id = EMOJI_BULLET
+        else:
+            emoji_badge = "⚪"
+            style_type = "danger"
+            icon_id = EMOJI_FAIL
+
+        code = t.get("ticket_code", f"#{t['id']}")
+        name = t.get("full_name", "User")
+        btn_text = f"{emoji_badge} {code} • {name}"
+        builder.row(
+            InlineKeyboardButton(
+                text=btn_text,
+                callback_data=f"adm_view_tk_{t['id']}",
+                style=style_type,
+                icon_custom_emoji_id=icon_id,
+            )
+        )
+
+    builder.row(
+        InlineKeyboardButton(
+            text="🔙 Admin Dashboard",
+            callback_data="admin_dashboard",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_BACK,
+        )
+    )
+    return builder.as_markup()
+
+
+def admin_ticket_detail_kb(ticket_id: int, is_closed: bool = False) -> InlineKeyboardMarkup:
+    """Action buttons for admin on a single ticket"""
+    builder = InlineKeyboardBuilder()
+
+    if not is_closed:
+        builder.row(
+            InlineKeyboardButton(
+                text="💬 Reply to User",
+                callback_data=f"adm_reply_tk_{ticket_id}",
+                style="success",
+                icon_custom_emoji_id=EMOJI_SUCCESS,
+            ),
+            InlineKeyboardButton(
+                text="✅ Close Ticket",
+                callback_data=f"adm_close_tk_{ticket_id}",
+                style="danger",
+                icon_custom_emoji_id=EMOJI_FAIL,
+            ),
+        )
+
+    builder.row(
+        InlineKeyboardButton(
+            text="🔙 All Tickets",
+            callback_data="adm_tickets_menu",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_STAR,
+        ),
+        InlineKeyboardButton(
+            text="⚡ Dashboard",
+            callback_data="admin_dashboard",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_BACK,
+        ),
+    )
+    return builder.as_markup()
+
+
+def admin_ticket_notify_kb(ticket_id: int) -> InlineKeyboardMarkup:
+    """Inline action buttons sent with new ticket notifications to admins"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="💬 Reply to Ticket",
+            callback_data=f"adm_reply_tk_{ticket_id}",
+            style="success",
+            icon_custom_emoji_id=EMOJI_SUCCESS,
+        ),
+        InlineKeyboardButton(
+            text="✅ Close Ticket",
+            callback_data=f"adm_close_tk_{ticket_id}",
+            style="danger",
+            icon_custom_emoji_id=EMOJI_FAIL,
+        ),
     )
     return builder.as_markup()
