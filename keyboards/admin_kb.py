@@ -104,6 +104,71 @@ def admin_main_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def admin_categories_kb(categories: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+    """List categories for admin"""
+    builder = InlineKeyboardBuilder()
+    for cat in categories:
+        builder.row(
+            InlineKeyboardButton(
+                text=f"📁 {cat['name']}",
+                callback_data=f"adm_cat_{cat['id']}",
+                style="primary",
+                icon_custom_emoji_id=EMOJI_BULLET,
+            )
+        )
+    builder.row(
+        InlineKeyboardButton(
+            text="➕ Add New Category",
+            callback_data="adm_add_category",
+            style="success",
+            icon_custom_emoji_id=EMOJI_SUCCESS,
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="🔙 Admin Dashboard",
+            callback_data="admin_dashboard",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_BACK,
+        )
+    )
+    return builder.as_markup()
+
+
+def admin_category_detail_kb(cat_id: int) -> InlineKeyboardMarkup:
+    """Category action buttons"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="✏️ Edit Name",
+            callback_data=f"adm_edit_cat_{cat_id}",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_BULLET,
+        ),
+        InlineKeyboardButton(
+            text="🗑️ Delete Category",
+            callback_data=f"adm_del_cat_{cat_id}",
+            style="danger",
+            icon_custom_emoji_id=EMOJI_FAIL,
+        ),
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="🔙 Categories List",
+            callback_data="adm_categories_menu",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_BACK,
+        ),
+        InlineKeyboardButton(
+            text="⚡ Admin Dashboard",
+            callback_data="admin_dashboard",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_STAR,
+        ),
+    )
+    return builder.as_markup()
+
+
 def admin_referral_settings_kb(settings: Dict[str, Any]) -> InlineKeyboardMarkup:
     """Referral system controls for admin"""
     builder = InlineKeyboardBuilder()
