@@ -61,6 +61,10 @@ class Database:
         await self._db.referral_rewards.create_index("id", unique=True)
         await self._db.referral_redemptions.create_index("id", unique=True)
         await self._db.referral_redemptions.create_index("user_id")
+        await self._db.tickets.create_index("id", unique=True)
+        await self._db.tickets.create_index("ticket_code", unique=True)
+        await self._db.tickets.create_index("user_id")
+        await self._db.tickets.create_index("status")
 
         # Ensure default category exists
         default_cat = await self._db.categories.find_one({"id": 1})
@@ -1108,6 +1112,114 @@ class Database:
         cursor = self._db.referral_redemptions.find().sort("id", -1).limit(limit)
         return [self._clean_doc(d) async for d in cursor]
 
+    # ==========================================
+    # SUPPORT TICKETS SYSTEM
+    # ==========================================
+
+    async def create_ticket(
+        self,
+        user_id: int,
+        username: Optional[str],
+        full_name: str,
+        subject: str,
+        message_text: str,
+        photo_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Create new support ticket"""
+        tid = await self._get_next_sequence("ticket_id")
+        ticket_code = f"TK-{random.randint(10000, 99999)}"
+        now_str = datetime.now().isoformat()
+
+        initial_msg = {
+            "sender": "user",
+            "sender_name": full_name or "Customer",
+            "text": message_text,
+            "photo_id": photo_id,
+            "created_at": now_str,
+        }
+
+        doc = {
+            "id": tid,
+            "ticket_code": ticket_code,
+            "user_id": user_id,
+            "username": username or "",
+            "full_name": full_name or "Customer",
+            "subject": subject,
+            "status": "open",  # 'open', 'answered', 'closed'
+            "messages": [initial_msg],
+            "created_at": now_str,
+            "updated_at": now_str,
+        }
+        await self._db.tickets.insert_one(doc)
+        return self._clean_doc(doc)
+
+    async def add_ticket_message(
+        self,
+        ticket_id: int,
+        sender: str,
+        sender_name: str,
+        text: str,
+        photo_id: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Add reply to ticket and update status"""
+        now_str = datetime.now().isoformat()
+        msg_obj = {
+            "sender": sender,  # 'user' or 'admin'
+            "sender_name": sender_name,
+            "text": text,
+            "photo_id": photo_id,
+            "created_at": now_str,
+        }
+        new_status = "answered" if sender == "admin" else "open"
+        res = await self._db.tickets.find_one_and_update(
+            {"id": ticket_id},
+            {
+                "$push": {"messages": msg_obj},
+                "$set": {"status": new_status, "updated_at": now_str},
+            },
+            return_document=True,
+        )
+        return self._clean_doc(res)
+
+    async def get_ticket(self, ticket_id: int) -> Optional[Dict[str, Any]]:
+        """Get ticket by integer ID"""
+        doc = await self._db.tickets.find_one({"id": ticket_id})
+        return self._clean_doc(doc)
+
+    async def get_ticket_by_code(self, ticket_code: str) -> Optional[Dict[str, Any]]:
+        """Get ticket by code e.g. TK-12345"""
+        doc = await self._db.tickets.find_one({"ticket_code": ticket_code.strip().upper()})
+        return self._clean_doc(doc)
+
+    async def get_user_tickets(self, user_id: int, limit: int = 15) -> List[Dict[str, Any]]:
+        """Get user tickets sorted by recent update"""
+        cursor = self._db.tickets.find({"user_id": user_id}).sort("updated_at", -1).limit(limit)
+        return [self._clean_doc(d) async for d in cursor]
+
+    async def get_all_tickets(self, limit: int = 50, status: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get all tickets for admin panel"""
+        query = {"status": status} if status else {}
+        cursor = self._db.tickets.find(query).sort("updated_at", -1).limit(limit)
+        return [self._clean_doc(d) async for d in cursor]
+
+    async def close_ticket(self, ticket_id: int, closed_by: str = "user") -> bool:
+        """Close support ticket"""
+        now_str = datetime.now().isoformat()
+        res = await self._db.tickets.update_one(
+            {"id": ticket_id},
+            {"$set": {"status": "closed", "closed_by": closed_by, "updated_at": now_str}},
+        )
+        return res.modified_count > 0
+
+    async def get_tickets_stats(self, user_id: Optional[int] = None) -> Dict[str, Any]:
+        """Get count of open and closed tickets"""
+        base_query = {"user_id": user_id} if user_id else {}
+        open_q = {**base_query, "status": {"$in": ["open", "answered"]}}
+        closed_q = {**base_query, "status": "closed"}
+        open_count = await self._db.tickets.count_documents(open_q)
+        closed_count = await self._db.tickets.count_documents(closed_q)
+        return {"open": open_count, "closed": closed_count, "total": open_count + closed_count}
+
     async def export_backup_json(self) -> str:
         """Export all collections as structured JSON string"""
         import json
@@ -1124,6 +1236,7 @@ class Database:
             "verified_devices": [self._clean_doc(d) async for d in self._db.verified_devices.find()],
             "referral_rewards": [self._clean_doc(d) async for d in self._db.referral_rewards.find()],
             "referral_redemptions": [self._clean_doc(d) async for d in self._db.referral_redemptions.find()],
+            "tickets": [self._clean_doc(d) async for d in self._db.tickets.find()],
             "settings": [self._clean_doc(d) async for d in self._db.settings.find()],
         }
         return json.dumps(data, indent=2, default=str)
