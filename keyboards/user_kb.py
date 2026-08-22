@@ -67,7 +67,7 @@ def main_menu_kb(is_admin: bool = False) -> InlineKeyboardMarkup:
             icon_custom_emoji_id=EMOJI_GIFT,
         ),
         InlineKeyboardButton(
-            text="📞 24/7 Support",
+            text="🎫 Support Tickets",
             callback_data="user_support",
             style="primary",
             icon_custom_emoji_id=EMOJI_BULLET,
@@ -459,5 +459,174 @@ def back_to_menu_kb() -> InlineKeyboardMarkup:
             style="primary",
             icon_custom_emoji_id=EMOJI_BACK,
         )
+    )
+    return builder.as_markup()
+
+
+def ticket_hub_kb(open_count: int = 0, channel_username: str = "") -> InlineKeyboardMarkup:
+    """Ticket desk overview keyboard"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="➕ 🎫 Raise New Ticket",
+            callback_data="ticket_new",
+            style="success",
+            icon_custom_emoji_id=EMOJI_SUCCESS,
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=f"📜 My Tickets ({open_count} Active)",
+            callback_data="ticket_list",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_STAR,
+        )
+    )
+    if channel_username:
+        clean_ch = channel_username.replace("@", "")
+        builder.row(
+            InlineKeyboardButton(
+                text="📢 Official Updates Channel",
+                url=f"https://t.me/{clean_ch}",
+            )
+        )
+    builder.row(
+        InlineKeyboardButton(
+            text="🏠 Main Menu",
+            callback_data="menu_home",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_BACK,
+        )
+    )
+    return builder.as_markup()
+
+
+def ticket_topics_kb() -> InlineKeyboardMarkup:
+    """Select issue topic for ticket"""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="💳 Payment / Wallet Deposit Issue",
+            callback_data="tkt_topic_payment",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_BULLET,
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="📦 Order / Product Key Issue",
+            callback_data="tkt_topic_order",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_BULLET,
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="💬 General Question / Account",
+            callback_data="tkt_topic_general",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_BULLET,
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="🔙 Back to Tickets",
+            callback_data="user_support",
+            style="danger",
+            icon_custom_emoji_id=EMOJI_BACK,
+        )
+    )
+    return builder.as_markup()
+
+
+def user_tickets_list_kb(tickets: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+    """List of user tickets"""
+    builder = InlineKeyboardBuilder()
+
+    for t in tickets:
+        status = t.get("status", "open")
+        if status == "answered":
+            emoji_badge = "🟢"
+            style_type = "success"
+            icon_id = EMOJI_SUCCESS
+        elif status == "open":
+            emoji_badge = "🟡"
+            style_type = "primary"
+            icon_id = EMOJI_BULLET
+        else:
+            emoji_badge = "⚪"
+            style_type = "danger"
+            icon_id = EMOJI_FAIL
+
+        code = t.get("ticket_code", f"#{t['id']}")
+        subj = t.get("subject", "Support")
+        btn_text = f"{emoji_badge} {code} • {subj}"
+        builder.row(
+            InlineKeyboardButton(
+                text=btn_text,
+                callback_data=f"view_tk_{t['id']}",
+                style=style_type,
+                icon_custom_emoji_id=icon_id,
+            )
+        )
+
+    builder.row(
+        InlineKeyboardButton(
+            text="➕ Raise New Ticket",
+            callback_data="ticket_new",
+            style="success",
+            icon_custom_emoji_id=EMOJI_SUCCESS,
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="🔙 Back to Support",
+            callback_data="user_support",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_BACK,
+        ),
+        InlineKeyboardButton(
+            text="🏠 Main Menu",
+            callback_data="menu_home",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_BACK,
+        ),
+    )
+    return builder.as_markup()
+
+
+def ticket_detail_kb(ticket_id: int, is_closed: bool = False) -> InlineKeyboardMarkup:
+    """Actions on single ticket"""
+    builder = InlineKeyboardBuilder()
+
+    if not is_closed:
+        builder.row(
+            InlineKeyboardButton(
+                text="💬 Reply to Ticket",
+                callback_data=f"user_reply_tk_{ticket_id}",
+                style="success",
+                icon_custom_emoji_id=EMOJI_SUCCESS,
+            ),
+            InlineKeyboardButton(
+                text="✅ Close Ticket",
+                callback_data=f"user_close_tk_{ticket_id}",
+                style="danger",
+                icon_custom_emoji_id=EMOJI_FAIL,
+            ),
+        )
+
+    builder.row(
+        InlineKeyboardButton(
+            text="📜 My Tickets",
+            callback_data="ticket_list",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_STAR,
+        ),
+        InlineKeyboardButton(
+            text="🏠 Main Menu",
+            callback_data="menu_home",
+            style="primary",
+            icon_custom_emoji_id=EMOJI_BACK,
+        ),
     )
     return builder.as_markup()
