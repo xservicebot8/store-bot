@@ -85,3 +85,13 @@ class UserDepositStates(StatesGroup):
 
 class UserPromoStates(StatesGroup):
     waiting_for_coupon_code = State()
+
+
+class UserTicketStates(StatesGroup):
+    waiting_for_subject = State()
+    waiting_for_message = State()
+    waiting_for_reply = State()
+
+
+class AdminTicketStates(StatesGroup):
+    waiting_for_reply = State()
